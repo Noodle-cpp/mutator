@@ -1,0 +1,37 @@
+name: standalone-windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Noodle-cpp/crapper
+          path: crapper
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build mutator.exe
+        shell: pwsh
+        env:
+          CRAPPER_ROOT: ${{ github.workspace }}/crapper
+        run: ./scripts/build-standalone.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutator-windows-x64
+          path: dist/mutator.exe
+      - name: Release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/mutator.exe

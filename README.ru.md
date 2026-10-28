@@ -121,6 +121,17 @@ Baseline должен пройти до любого мутанта. Тайма�
 
 C# / .NET: что подготовить в solution — [docs/csharp-project.ru.md](docs/csharp-project.ru.md).
 
+## Сборка без Python (Windows)
+
+**`mutator.exe`** включает **crapper** внутри (отдельный Python/crapper на целевой машине не нужен).
+
+```powershell
+.\scripts\build-standalone.ps1   # нужен checkout ../crapper при сборке
+# → dist\mutator.exe
+```
+
+См. [Noodle-cpp/ub — STANDALONE.ru.md](https://github.com/Noodle-cpp/ub/blob/master/docs/STANDALONE.ru.md).
+
 ## Разработка
 
 ```bash
