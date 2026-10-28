@@ -11,6 +11,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from mutator.crapper_link import ensure_crapper
+
 Command = str | list[str]
 
 
@@ -222,6 +224,24 @@ def _python_plan(root: Path, source: Path) -> tuple[Command, Path]:
     return _python_command(directory), directory
 
 
+def _csharp_plan(root: Path, source: Path) -> tuple[Command, Path]:
+    crapper = ensure_crapper()
+    csprojs = crapper.runners._csharp_coverage_csprojs(root, [source.resolve()])
+    if csprojs:
+        csproj = csprojs[0]
+        return ["dotnet", "test", str(csproj.resolve())], csproj.parent
+    directory = source.resolve().parent
+    for _ in range(32):
+        matches = sorted(directory.glob("*.csproj"))
+        if matches:
+            csproj = matches[0]
+            return ["dotnet", "test", str(csproj.resolve())], csproj.parent
+        if directory == root or directory.parent == directory:
+            break
+        directory = directory.parent
+    return ["dotnet", "test"], root
+
+
 _PLANS = {
     "clojure": _clojure_plan,
     "java": _java_plan,
@@ -229,6 +249,7 @@ _PLANS = {
     "typescript": _typescript_plan,
     "rust": _rust_plan,
     "python": _python_plan,
+    "csharp": _csharp_plan,
 }
 
 

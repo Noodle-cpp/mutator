@@ -24,6 +24,35 @@ def test_jacoco_marks_lines_with_covered_instructions(tmp_path):
     assert covered_lines(tmp_path, source, "java") == {3, 5}
 
 
+def test_cobertura_marks_hit_lines(tmp_path):
+    report = tmp_path / "target" / "coverage" / "csharp" / "coverage.cobertura.xml"
+    report.parent.mkdir(parents=True)
+    report.write_text(
+        """<?xml version="1.0"?>
+<coverage line-rate="1" branch-rate="1" version="1.9">
+  <packages>
+    <package name="demo" line-rate="1" branch-rate="1">
+      <classes>
+        <class name="demo.Board" filename="src/demo/Board.cs" line-rate="1">
+          <lines>
+            <line number="3" hits="1" branch="false"/>
+            <line number="4" hits="0" branch="false"/>
+            <line number="5" hits="2" branch="false"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
+""",
+        encoding="utf-8",
+    )
+    source = tmp_path / "src" / "demo" / "Board.cs"
+    source.parent.mkdir(parents=True)
+    source.write_text("namespace demo;\nclass Board {}\n", encoding="utf-8")
+    assert covered_lines(tmp_path, source, "csharp") == {3, 5}
+
+
 def test_go_profile_marks_hit_lines(tmp_path):
     profile = tmp_path / "target" / "coverage" / "go" / "coverage.out"
     profile.parent.mkdir(parents=True)

@@ -331,6 +331,23 @@ def test_commands_follow_the_nearest_project_and_a_killed_process(tmp_path):
     assert directory == sub
     assert command == ["go", "test", "-count=1", "./pkg"]
 
+    lib = sub / "src" / "App"
+    lib.mkdir(parents=True)
+    (lib / "App.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"></Project>\n', encoding="utf-8")
+    csharp = lib / "App.cs"
+    csharp.write_text("namespace App { class B { void Run() {} } }\n", encoding="utf-8")
+    tests = sub / "App.Tests"
+    tests.mkdir()
+    (tests / "App.Tests.csproj").write_text(
+        '<Project Sdk="Microsoft.NET.Sdk">'
+        '<ItemGroup><ProjectReference Include="..\\src\\App\\App.csproj" /></ItemGroup></Project>\n',
+        encoding="utf-8",
+    )
+    command, directory = command_for(root, csharp, "csharp", None)
+    assert directory == tests
+    assert command[:2] == ["dotnet", "test"]
+    assert str(command[2]).endswith("App.Tests.csproj")
+
     (sub / "pyproject.toml").write_text("[project]\ndependencies=['pytest']\n", encoding="utf-8")
     python = sub / "app.py"
     python.write_text("def place():\n    return 1\n", encoding="utf-8")

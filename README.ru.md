@@ -2,7 +2,7 @@
 
 [English documentation](README.md)
 
-Мутационное тестирование для Clojure, Java, Go, TypeScript, Rust и Python. Один запуск определяет язык каждого исходного файла, применяет правила мутаций этого языка и записывает снимок, который уже читает [uml-viewer](https://github.com/unclebob/uml-viewer).
+Мутационное тестирование для Clojure, Java, C#, Go, TypeScript, Rust и Python. Один запуск определяет язык каждого исходного файла, применяет правила мутаций этого языка и записывает снимок, который уже читает [uml-viewer](https://github.com/unclebob/uml-viewer).
 
 Clojure следует [clj-mutate](https://github.com/unclebob/clj-mutate). Go — [mutate4go](https://github.com/unclebob/mutate4go). Java — [mutate4java](https://github.com/unclebob/mutate4java). TypeScript, Rust и Python используют те же решения, что Java, в синтаксисе языка. Имена функций и пространств имён берутся из [crapper](https://github.com/unclebob/crapper) — по ним uml-viewer стыкуется с `.metrics/crap.edn`.
 
@@ -81,6 +81,7 @@ uml-viewer загружает каждый `*.edn` под `.metrics/mutate`. О�
 | --- | --- | --- |
 | Clojure | `ns` | имя `defn` / `defn-` |
 | Java | `package.Class` или `package.Outer.Inner` | имя метода |
+| C# | `namespace.Type` или `namespace.Outer.Inner` | имя метода |
 | Go | путь импорта пакета или `import/path.Receiver` | имя функции или метода |
 | TypeScript | точечный путь модуля или `module.Class` | имя функции или метода |
 | Rust | `crate::module` или `crate::module::Type` | имя функции или метода |
@@ -96,6 +97,7 @@ uml-viewer загружает каждый `*.edn` под `.metrics/mutate`. О�
 | --- | --- |
 | Clojure | head-символы clj-mutate: `+`/`-`, `*`/`/`, `inc`/`dec`, сравнения, `=`/`not=`, `if`/`if-not`, `when`/`when-not`, `and`/`or`, пары seq, predicate, coercion. `true`/`false` и `0`/`1` где угодно. |
 | Java | `true`/`false`, `==`/`!=`, `<`/`<=`, `>`/`>=`, `+`/`-`, `*`/`/`, `&&`/`||`, удаление `!` и унарного `-`, `0`/`1`. Конструкторы не записи, как в crapper. |
+| C# | набор Java плюс `??`/`||`. Конструкторы и accessors не мутируются как отдельные формы — как в crapper. |
 | Go | mutate4go: `+`/`-`, `*` только в `/`, сравнения, `==`/`!=`, `true`/`false`, `&&`/`||`, `0`/`1`. |
 | TypeScript | набор Java плюс `===`/`!==`, `??` в `||`, `?.` в `.`. Вызов или индекс теряет `?.` (`a?.()` → `a()`). `.js`, `.jsx`, `.mjs`, `.cjs` — те же правила. |
 | Rust | набор Java (`&&`/`||`, `!`, унарный `-`). |
@@ -109,6 +111,7 @@ Baseline должен пройти до любого мутанта. Тайма�
 | --- | --- | --- |
 | Clojure | `clj -M:spec --tag ~no-mutate` при Speclj на classpath, иначе `clj -M:test` или `bb spec` | ближайший `deps.edn` или `bb.edn` |
 | Java | `mvn -q test -DexcludeTags=no-mutate` | ближайший `pom.xml` |
+| C# | `dotnet test` на test-проекте, ссылающемся на библиотеку (как в crapper) | ближайший `*.Tests.csproj` |
 | Go | `go test -count=1` пакета файла | ближайший `go.mod` |
 | TypeScript | `npm test` | ближайший `package.json` |
 | Rust | `cargo test` | ближайший `Cargo.toml` |

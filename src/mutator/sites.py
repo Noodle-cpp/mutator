@@ -38,7 +38,12 @@ _BINARY_PARENTS = {
     "boolean_operator",
 }
 
-_UNARY_PARENTS = {"unary_expression", "unary_operator", "not_operator"}
+_UNARY_PARENTS = {
+    "unary_expression",
+    "prefix_unary_expression",
+    "unary_operator",
+    "not_operator",
+}
 
 _BOOLEANS = {"true": "false", "false": "true", "True": "False", "False": "True"}
 
@@ -115,6 +120,8 @@ def _grammar(language: str, path: str) -> str:
         return "typescript"
     if language == "go":
         return "go"
+    if language == "csharp":
+        return "csharp"
     return language
 
 
@@ -137,7 +144,7 @@ def _category(token: str) -> str:
 def _binary_mutant(language: str, token: str) -> str | None:
     if language == "go" and token == "/":
         return None
-    if token == "??" and language != "typescript":
+    if token == "??" and language not in {"typescript", "csharp"}:
         return None
     return _BINARY.get(token)
 

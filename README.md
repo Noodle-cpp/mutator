@@ -2,7 +2,7 @@
 
 > [Русская документация](README.ru.md)
 
-Mutation testing for Clojure, Java, Go, TypeScript, Rust, and Python. One run detects the language of each source file, applies that language's mutation rules, and writes the snapshot [uml-viewer](https://github.com/unclebob/uml-viewer) already reads.
+Mutation testing for Clojure, Java, C#, Go, TypeScript, Rust, and Python. One run detects the language of each source file, applies that language's mutation rules, and writes the snapshot [uml-viewer](https://github.com/unclebob/uml-viewer) already reads.
 
 Clojure follows [clj-mutate](https://github.com/unclebob/clj-mutate). Go follows [mutate4go](https://github.com/unclebob/mutate4go). Java follows [mutate4java](https://github.com/unclebob/mutate4java). TypeScript, Rust, and Python use the same decisions as Java, spelled in that language. Function names and namespaces come from [crapper](https://github.com/unclebob/crapper), which is what uml-viewer joins to `.metrics/crap.edn`.
 
@@ -81,6 +81,7 @@ uml-viewer loads every `*.edn` file under `.metrics/mutate`. Each file is one na
 | --- | --- | --- |
 | Clojure | the `ns` | the `defn` / `defn-` name |
 | Java | `package.Class`, or `package.Outer.Inner` | the method name |
+| C# | `namespace.Type`, or `namespace.Outer.Inner` | the method name |
 | Go | the package import path, or `import/path.Receiver` | the function or method name |
 | TypeScript | the dotted module path, or `module.Class` | the function or method name |
 | Rust | `crate::module`, or `crate::module::Type` | the function or method name |
@@ -96,6 +97,7 @@ Tokens inside strings, comments, and quoted Clojure forms are left alone. A repl
 | --- | --- |
 | Clojure | clj-mutate's head symbols: `+`/`-`, `*` to `/`, `inc`/`dec`, comparisons, `=`/`not=`, `if`/`if-not`, `when`/`when-not`, `and`/`or`, and the seq, predicate, and coercion pairs. `true`/`false` and `0`/`1` anywhere. |
 | Java | `true`/`false`, `==`/`!=`, `<`/`<=`, `>`/`>=`, `+`/`-`, `*`/`/`, `&&`/`||`, delete `!` and unary `-`, `0`/`1`. Constructors are not entries, matching crapper. |
+| C# | the Java set, plus `??` to `||`. Constructors and property accessors are not separate forms, matching crapper. |
 | Go | mutate4go: `+`/`-`, `*` to `/` only, comparisons, `==`/`!=`, `true`/`false`, `&&`/`||`, `0`/`1`. |
 | TypeScript | the Java set, plus `===`/`!==`, `??` to `||`, and `?.` to `.`. A call or index drops `?.` (`a?.()` becomes `a()`). `.js`, `.jsx`, `.mjs`, and `.cjs` use these rules. |
 | Rust | the Java set (`&&`/`||`, `!`, unary `-`). |
@@ -109,6 +111,7 @@ The baseline command has to pass before any mutant runs. A mutant's timeout is t
 | --- | --- | --- |
 | Clojure | `clj -M:spec --tag ~no-mutate` when Speclj is on the classpath, otherwise `clj -M:test` or `bb spec` | nearest `deps.edn` or `bb.edn` |
 | Java | `mvn -q test -DexcludeTags=no-mutate` | nearest `pom.xml` |
+| C# | `dotnet test` on a test project that references the library (same as crapper) | nearest `*.Tests.csproj` |
 | Go | `go test -count=1` of the file's package | nearest `go.mod` |
 | TypeScript | `npm test` | nearest `package.json` |
 | Rust | `cargo test` | nearest `Cargo.toml` |

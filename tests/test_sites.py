@@ -72,6 +72,28 @@ class Board {
     assert {site.namespace for site in sites} == {"demo.Board"}
 
 
+def test_csharp_rules_follow_java_mutations(tmp_path):
+    source = """
+namespace demo;
+class Board {
+  bool Place(int x) {
+    if (x > 0 && ready)
+      return x > 0;
+    return !ok ? false : true;
+  }
+  private void Hide() { }
+}
+"""
+    sites = _sites(tmp_path, "src/demo/Board.cs", source)
+    public = [site for site in sites if site.form_id == "defn/Place"]
+    assert ("&&", "||") in {(site.original, site.mutant) for site in public}
+    assert (">", ">=") in {(site.original, site.mutant) for site in public}
+    assert ("!", "") in {(site.original, site.mutant) for site in public}
+    assert ("true", "false") in {(site.original, site.mutant) for site in public}
+    assert {site.namespace for site in sites} == {"demo.Board"}
+    assert is_private("csharp", "Hide", source, 9, 10)
+
+
 def test_java_swaps_division_both_ways(tmp_path):
     source = """package demo;
 class Math {

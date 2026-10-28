@@ -209,6 +209,48 @@ def _go_lines(profile, source_path: str) -> set[int] | None:
     return covered
 
 
+def _cobertura_paths(root: Path) -> list[Path]:
+    paths = list(root.glob("target/coverage/csharp/**/coverage.cobertura.xml"))
+    paths.extend(root.glob("target/coverage/**/coverage.cobertura.xml"))
+    paths.extend(root.glob("**/TestResults/**/coverage.cobertura.xml"))
+    return paths
+
+
+def _cobertura_index(root: Path) -> dict[str, set[int]]:
+    crapper = ensure_crapper()
+    found: dict[str, set[int]] = {}
+    seen: set[Path] = set()
+    for path in _cobertura_paths(root):
+        if not path.is_file():
+            continue
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        text = path.read_text(encoding="utf-8", errors="replace")
+        cleaned = crapper.coverage._DOCTYPE.sub("", text)
+        try:
+            xml_root = ET.fromstring(cleaned)
+        except ET.ParseError:
+            continue
+        for class_node in xml_root.iter("class"):
+            filename = class_node.get("filename") or ""
+            if not filename:
+                continue
+            key = crapper.coverage.normalize_path(filename)
+            covered = found.setdefault(key, set())
+            for lines in class_node.findall("lines"):
+                for line in lines.findall("line"):
+                    try:
+                        hits = int(line.get("hits") or "0")
+                        number = int(line.get("number") or "0")
+                    except ValueError:
+                        continue
+                    if hits > 0 and number > 0:
+                        covered.add(number)
+    return found
+
+
 def covered_lines(root: Path, source_path: Path, language: str) -> set[int] | None:
     """Lines with a hit, or None when this file is absent from coverage."""
 
@@ -216,6 +258,8 @@ def covered_lines(root: Path, source_path: Path, language: str) -> set[int] | No
     path = source_path.resolve().as_posix()
     if language == "java":
         return _lookup(_jacoco_index(root), path)
+    if language == "csharp":
+        return _lookup(_cobertura_index(root), path)
     bundle = crapper.coverage.load_bundle(root)
     if language == "go":
         return _go_lines(bundle.go_profile, path)
