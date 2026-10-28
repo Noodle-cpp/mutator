@@ -119,6 +119,8 @@ The baseline command has to pass before any mutant runs. A mutant's timeout is t
 
 Coverage is generated with crapper's commands unless `--use-existing-coverage` or `--no-coverage` is set. A file missing from the report is treated as uncovered, and the run says so.
 
+C# / .NET project layout: [docs/csharp-project.md](docs/csharp-project.md).
+
 ## Development
 
 ```bash

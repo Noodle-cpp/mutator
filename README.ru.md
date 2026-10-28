@@ -119,6 +119,8 @@ Baseline должен пройти до любого мутанта. Тайма�
 
 Покрытие генерируется командами crapper, если не `--use-existing-coverage` или `--no-coverage`. Файл вне отчёта — непокрыт, об этом сообщается.
 
+C# / .NET: что подготовить в solution — [docs/csharp-project.ru.md](docs/csharp-project.ru.md).
+
 ## Разработка
 
 ```bash
