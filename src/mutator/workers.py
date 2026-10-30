@@ -35,6 +35,8 @@ SKIP_LINK = frozenset(
         "dist",
         "build",
         "out",
+        "bin",
+        "obj",
         "coverage",
         ".metrics",
         "__pycache__",
@@ -281,16 +283,89 @@ def create_workers(
         _overlay(worker, root, relative, original)
         for importer in importers:
             _copy_importer(worker, root, importer)
+        materialize_csharp_projects(worker)
         created.append(worker)
     return created
 
 
 def mapped_cwd(worker: Path, root: Path, cwd: Path) -> Path:
+    """Stay inside the overlay. Resolving the result would follow a linked directory."""
+
     try:
         relative = cwd.resolve().relative_to(root.resolve())
     except ValueError:
         return worker
-    return (worker / relative).resolve()
+    return worker / relative
+
+
+def _expand_csproj_directories(worker: Path) -> None:
+    """Turn linked project directories into real ones.
+
+    MSBuild uses the directory of the csproj. A linked directory, or a linked
+    csproj, sends the build back to the unmutated tree. ``bin`` and ``obj`` stay
+    unlinked so a worker does not reuse another build.
+    """
+
+    pending = [worker]
+    while pending:
+        current = pending.pop()
+        if current.is_symlink() or not current.is_dir():
+            continue
+        for child in list(current.iterdir()):
+            if child.is_dir() and not child.is_symlink():
+                pending.append(child)
+                continue
+            if not child.is_symlink() or not child.is_dir():
+                continue
+            resolved = child.resolve()
+            if not resolved.is_dir():
+                continue
+            if not any(item.suffix == ".csproj" for item in resolved.iterdir() if item.is_file()):
+                continue
+            _expand_directory(child, resolved)
+            pending.append(child)
+
+
+def _copy_csproj_links(worker: Path) -> None:
+    pending = [worker]
+    while pending:
+        current = pending.pop()
+        if current.is_symlink() or not current.is_dir():
+            continue
+        for child in list(current.iterdir()):
+            if child.is_dir() and not child.is_symlink():
+                pending.append(child)
+                continue
+            if child.is_symlink() and child.suffix == ".csproj":
+                payload = child.resolve().read_bytes()
+                child.unlink()
+                child.write_bytes(payload)
+
+
+def materialize_csharp_projects(worker: Path) -> None:
+    _expand_csproj_directories(worker)
+    _copy_csproj_links(worker)
+
+
+def command_in_worker(command: Command, worker: Path, root: Path) -> Command:
+    """Point absolute project paths at the overlay copy."""
+
+    if isinstance(command, str):
+        return command
+    root_resolved = root.resolve()
+    rewritten = []
+    for part in command:
+        path = Path(part)
+        if not path.is_absolute():
+            rewritten.append(part)
+            continue
+        try:
+            relative = path.resolve().relative_to(root_resolved)
+        except ValueError:
+            rewritten.append(part)
+            continue
+        rewritten.append(str(worker / relative))
+    return rewritten
 
 
 def _execute(
@@ -316,7 +391,11 @@ def _execute(
     mutated = apply_site(original.decode("utf-8"), site.start, site.end, site.mutant)
     destination.write_text(mutated, encoding="utf-8")
     try:
-        result = runner.run(command, mapped_cwd(directory, root, cwd), timeout)
+        result = runner.run(
+            command_in_worker(command, directory, root),
+            mapped_cwd(directory, root, cwd),
+            timeout,
+        )
     finally:
         destination.write_bytes(original)
     if result.timed_out or result.code != 0:

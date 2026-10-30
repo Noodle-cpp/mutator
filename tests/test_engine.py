@@ -7,7 +7,14 @@ from mutator.engine import mutate_file, restore_backups
 from mutator.edn import loads
 from mutator.metrics import snapshot_path
 from mutator.runner import CommandResult
-from mutator.workers import create_workers, delete_tree, new_run_dir, worker_count
+from mutator.workers import (
+    command_in_worker,
+    create_workers,
+    delete_tree,
+    mapped_cwd,
+    new_run_dir,
+    worker_count,
+)
 
 
 class FakeRunner:
@@ -286,6 +293,49 @@ def test_a_mutation_run_leaves_the_project_tree_unchanged(tmp_path):
     )
     assert path.read_text(encoding="utf-8") == original
     assert [item for item in (tmp_path / "target").rglob("*") if item.is_file()] == []
+
+
+def test_csharp_worker_keeps_the_build_inside_the_overlay(tmp_path):
+    library = tmp_path / "App"
+    library.mkdir()
+    (library / "App.csproj").write_text("<Project />\n", encoding="utf-8")
+    source = library / "Lib.cs"
+    source.write_text("class Lib { int n() { return 1; } }\n", encoding="utf-8")
+    (library / "bin").mkdir()
+    (library / "bin" / "App.dll").write_bytes(b"stale")
+    tests = tmp_path / "App.Tests"
+    tests.mkdir()
+    test_project = tests / "App.Tests.csproj"
+    test_project.write_text(
+        '<Project><ItemGroup><ProjectReference Include="..\\App\\App.csproj" /></ItemGroup></Project>\n',
+        encoding="utf-8",
+    )
+
+    base = new_run_dir(tmp_path)
+    try:
+        worker = create_workers(base, tmp_path, "App/Lib.cs", source.read_bytes(), 1)[0]
+        copied_project = worker / "App" / "App.csproj"
+        copied_tests = worker / "App.Tests"
+        assert copied_project.is_file()
+        assert not copied_project.is_symlink()
+        assert copied_tests.is_dir()
+        assert not copied_tests.is_symlink()
+        assert (copied_tests / "App.Tests.csproj").is_file()
+        assert not (copied_tests / "App.Tests.csproj").is_symlink()
+        assert not (worker / "App" / "bin").exists()
+
+        cwd = mapped_cwd(worker, tmp_path, tests)
+        assert cwd == worker / "App.Tests"
+        assert cwd.resolve() != tests.resolve()
+
+        command = command_in_worker(
+            ["dotnet", "test", str(test_project.resolve())],
+            worker,
+            tmp_path,
+        )
+        assert command[2] == str(worker / "App.Tests" / "App.Tests.csproj")
+    finally:
+        delete_tree(base)
 
 
 def test_restore_backups_puts_an_interrupted_mutant_back(tmp_path):
