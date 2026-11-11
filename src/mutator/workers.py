@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -96,8 +97,22 @@ def symlink(link: Path, target: Path) -> None:
 
 
 def delete_tree(path: Path) -> None:
-    """Remove a worker tree without following a link into the real project."""
+    """Remove a worker tree without following a link into the real project.
 
+    A killed dotnet process can keep a directory locked for a moment on Windows.
+    """
+
+    for attempt in range(10):
+        try:
+            _delete_tree_once(path)
+            return
+        except OSError:
+            if attempt == 9 or not path.exists():
+                raise
+            time.sleep(0.25 * (attempt + 1))
+
+
+def _delete_tree_once(path: Path) -> None:
     if path.is_symlink():
         path.unlink()
         return
@@ -105,7 +120,7 @@ def delete_tree(path: Path) -> None:
         return
     if path.is_dir():
         for child in list(path.iterdir()):
-            delete_tree(child)
+            _delete_tree_once(child)
         path.rmdir()
         return
     path.unlink()

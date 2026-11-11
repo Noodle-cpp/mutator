@@ -111,12 +111,34 @@ class CommandRunner:
             code = process.returncode if process.returncode is not None else 1
             timed_out = False
         except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
+            _stop_process_tree(process)
             output, _err = process.communicate()
             code = 124
             timed_out = True
         seconds = time.monotonic() - started
         return CommandResult(code=code, timed_out=timed_out, seconds=seconds, output=output or "")
+
+
+def _stop_process_tree(process: subprocess.Popen) -> None:
+    """Kill the command and every child. Windows has no os.killpg, and a leftover
+    dotnet test keeps the worker directory locked (WinError 32)."""
+
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+    else:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
 
 
 def nearest(start: Path, marker: str, stop: Path) -> Path | None:
