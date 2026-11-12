@@ -89,6 +89,9 @@ class CommandRunner:
         started = time.monotonic()
         environment = os.environ.copy()
         environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        environment["MSBUILDDISABLENODEREUSE"] = "1"
+        environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1"
+        environment["DOTNET_NOLOGO"] = "1"
         _prefer_worker_sources(cwd, environment)
         try:
             process = subprocess.Popen(
@@ -253,13 +256,29 @@ def _csharp_plan(root: Path, source: Path) -> tuple[Command, Path]:
     csprojs = crapper.runners._csharp_coverage_csprojs(root, [source.resolve()])
     if csprojs:
         csproj = csprojs[0]
-        return ["dotnet", "test", str(csproj.resolve())], csproj.parent
+        return [
+            "dotnet",
+            "test",
+            str(csproj.resolve()),
+            "--nologo",
+            "-v",
+            "q",
+            "-p:UseSharedCompilation=false",
+        ], csproj.parent
     directory = source.resolve().parent
     for _ in range(32):
         matches = sorted(directory.glob("*.csproj"))
         if matches:
             csproj = matches[0]
-            return ["dotnet", "test", str(csproj.resolve())], csproj.parent
+            return [
+            "dotnet",
+            "test",
+            str(csproj.resolve()),
+            "--nologo",
+            "-v",
+            "q",
+            "-p:UseSharedCompilation=false",
+        ], csproj.parent
         if directory == root or directory.parent == directory:
             break
         directory = directory.parent
